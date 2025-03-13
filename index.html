@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>考试管理系统</title>
+    <style>
+        body {
+            font-family: '微软雅黑', Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .header, .current-time {
+            text-align: center;
+            color: #003399;
+            margin-bottom: 20px;
+        }
+        .exam-schedule {
+            background-color: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        th, td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        th {
+            background-color: #003399;
+            color: white;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            z-index: 999;
+        }
+        .modal-content {
+            background-color: white;
+            margin: 10% auto;
+            padding: 20px;
+            width: 50%;
+            border-radius: 10px;
+            text-align: center;
+        }
+        .admin-login {
+            text-align: right;
+            margin-bottom: 10px;
+        }
+        .size-control {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .size-btn {
+            width: 30px;
+            height: 30px;
+            border: 1px solid #003399;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+        .warning {
+            text-align: center;
+            color: red;
+            font-size: 18px;
+            margin-top: 20px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>华南理工大学出国留学预备学院</h1>
+    </div>
+
+    <div class="current-time" id="currentTime"></div>
+
+    <div class="size-control">
+        <label>时间字号：</label>
+        <button class="size-btn" onclick="adjustFontSize(-2)">-</button>
+        <input type="number" id="fontSize" min="12" max="100" value="24" style="width: 60px; text-align: center" readonly>
+        <button class="size-btn" onclick="adjustFontSize(2)">+</button>
+    </div>
+
+    <div class="admin-login">
+        <button onclick="showLogin()">管理员登录</button>
+    </div>
+
+    <div class="exam-schedule">
+        <h2>当前考试安排</h2>
+        <table id="examTable">
+            <thead>
+                <tr>
+                    <th>考试科目</th>
+                    <th>考试时间</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody id="examBody"></tbody>
+        </table>
+    </div>
+
+    <div class="warning">
+        诚信考试，请勿使用电子产品及作弊
+    </div>
+
+    <!-- 管理员登录模态框 -->
+    <div id="loginModal" class="modal">
+        <div class="modal-content">
+            <h3>管理员登录</h3>
+            <input type="password" id="adminPassword" placeholder="输入密码"><br><br>
+            <button onclick="validateLogin()">登录</button>
+            <button onclick="closeModal('loginModal')">取消</button>
+        </div>
+    </div>
+
+    <!-- 管理员设置面板 -->
+    <div id="editModal" class="modal">
+        <div class="modal-content">
+            <h3>考试管理</h3>
+            <label>考试科目：</label>
+            <input type="text" id="subject"><br><br>
+            <label>考试时间：</label>
+            <input type="text" id="examTime" placeholder="例如 09:00-11:00"><br><br>
+            <button onclick="addExam()">添加</button>
+            <button onclick="closeModal('editModal')">关闭</button>
+        </div>
+    </div>
+
+    <script>
+        function updateTime() {
+            document.getElementById('currentTime').textContent = new Date().toLocaleString('zh-CN', { hour12: false });
+        }
+
+        function showLogin() {
+            document.getElementById('loginModal').style.display = 'block';
+        }
+
+        function validateLogin() {
+            const password = document.getElementById('adminPassword').value;
+            if (password === '123') {
+                alert("登录成功！");
+                closeModal('loginModal');
+                document.getElementById('editModal').style.display = 'block';
+            } else {
+                alert('密码错误！');
+            }
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
+        }
+
+        let exams = JSON.parse(localStorage.getItem('exams')) || [];
+
+        function renderExams() {
+            const tbody = document.getElementById('examBody');
+            tbody.innerHTML = "";
+            exams.forEach((exam, index) => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${exam.subject}</td>
+                    <td>${exam.time}</td>
+                    <td><button onclick="removeExam(${index})">删除</button></td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function addExam() {
+            const subject = document.getElementById('subject').value;
+            const time = document.getElementById('examTime').value;
+            if (subject && time) {
+                exams.push({ subject, time });
+                localStorage.setItem('exams', JSON.stringify(exams));
+                renderExams();
+                closeModal('editModal');
+            } else {
+                alert("请填写完整信息！");
+            }
+        }
+
+        function removeExam(index) {
+            exams.splice(index, 1);
+            localStorage.setItem('exams', JSON.stringify(exams));
+            renderExams();
+        }
+
+        function adjustFontSize(change) {
+            let fontSize = parseInt(localStorage.getItem('fontSize')) || 24;
+            fontSize = Math.min(100, Math.max(12, fontSize + change));  // 修改最大值为100
+            document.getElementById('currentTime').style.fontSize = fontSize + 'px';
+            document.getElementById('fontSize').value = fontSize;
+            localStorage.setItem('fontSize', fontSize);
+        }
+
+        setInterval(updateTime, 1000);
+        updateTime();
+
+        let savedFontSize = localStorage.getItem('fontSize') || 24;
+        document.getElementById('currentTime').style.fontSize = savedFontSize + 'px';
+        document.getElementById('fontSize').value = savedFontSize;
+
+        renderExams();
+    </script>
+</body>
+</html>
